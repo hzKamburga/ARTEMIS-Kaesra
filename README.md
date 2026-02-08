@@ -33,11 +33,22 @@ rustup install stable
 rustup default stable
 ```
 
-### Build Codex Binary
+### Build Codex Binary (with CPU limit)
+
+To limit CPU usage during build (recommended for systems with limited resources):
 
 ```bash
-cargo build --release --manifest-path codex-rs/Cargo.toml
+# Limit to 2 CPU cores
+cargo build --release --manifest-path codex-rs/Cargo.toml -j 2
+
+# Or use taskset to limit to specific CPUs (e.g., CPUs 0 and 1)
+taskset -c 0,1 cargo build --release --manifest-path codex-rs/Cargo.toml
+
+# Or use cpulimit to limit CPU percentage (e.g., 50%)
+cpulimit -l 50 -e cargo -- build --release --manifest-path codex-rs/Cargo.toml
 ```
+
+**Note:** The `-j 2` flag limits parallel jobs to 2, reducing CPU usage. Adjust based on your system.
 
 ### Setup Python Environment
 
