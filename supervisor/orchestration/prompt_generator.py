@@ -11,21 +11,11 @@ class PromptGenerator:
     
     def __init__(self, generator_model: str = None):
         # Use environment variable or default model
-        if generator_model is None:
-            if os.getenv("OPENROUTER_API_KEY"):
-                generator_model = os.getenv("PROMPT_GENERATOR_MODEL", "anthropic/claude-opus-4.1")
-            else:
-                generator_model = os.getenv("PROMPT_GENERATOR_MODEL", "gpt-5")
+        self.generator_model = generator_model or os.getenv("KAESRA_PROMPT_GENERATOR_MODEL", "google-gemini-3-pro-preview")
         
-        # Adjust model name if using OpenAI directly
-        if not os.getenv("OPENROUTER_API_KEY") and generator_model.startswith("openai/"):
-            self.generator_model = generator_model.replace("openai/", "")  # Remove openai/ prefix for direct OpenAI API
-        else:
-            self.generator_model = generator_model
-        
-        # Try OPENROUTER_API_KEY first, fallback to OPENAI_API_KEY
-        api_key = os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY")
-        base_url = "https://openrouter.ai/api/v1" if os.getenv("OPENROUTER_API_KEY") else "https://api.openai.com/v1"
+        # Use Kaesra Tech API
+        api_key = os.getenv("KAESRA_API_KEY")
+        base_url = os.getenv("KAESRA_BASE_URL", "https://api-kaesra-tech.vercel.app/v1")
         
         self.client = AsyncOpenAI(
             api_key=api_key,
@@ -62,21 +52,15 @@ Here is the instruction:"""
             full_prompt = f'{generation_prompt}\n\n"""\n{task_description}\n"""\n\nProvide the system prompt and nothing else'
             
             try:
-                # Use correct parameters based on API provider
+                # Use correct parameters for Kaesra Tech API
                 completion_params = {
                     "model": self.generator_model,
                     "messages": [
                         {"role": "system", "content": "You are an expert at creating system prompts for AI agents conducting security testing. Generate clear, specific, detailed system prompts."},
                         {"role": "user", "content": full_prompt}
                     ],
+                    "max_completion_tokens": 8000
                 }
-                
-                # Only set temperature and max_tokens for OpenRouter
-                if os.getenv("OPENROUTER_API_KEY"):
-                    completion_params["temperature"] = 0.3
-                    completion_params["max_tokens"] = 8000
-                else:
-                    completion_params["max_completion_tokens"] = 8000
                     
                 response = await self.client.chat.completions.create(**completion_params)
             except Exception as api_error:

@@ -11,21 +11,11 @@ class TaskRouter:
     
     def __init__(self, router_model: str = None):
         # Use environment variable or default model
-        if router_model is None:
-            if os.getenv("OPENROUTER_API_KEY"):
-                router_model = os.getenv("ROUTER_MODEL", "openai/o4-mini")
-            else:
-                router_model = os.getenv("ROUTER_MODEL", "o4-mini")
+        self.router_model = router_model or os.getenv("KAESRA_ROUTER_MODEL", "anthropic-claude-sonnet-3.7")
         
-        # Adjust model name if using OpenAI directly
-        if not os.getenv("OPENROUTER_API_KEY") and router_model.startswith("openai/"):
-            self.router_model = router_model.replace("openai/", "")  # Remove openai/ prefix for direct OpenAI API
-        else:
-            self.router_model = router_model
-        
-        # Try OPENROUTER_API_KEY first, fallback to OPENAI_API_KEY
-        api_key = os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY")
-        base_url = "https://openrouter.ai/api/v1" if os.getenv("OPENROUTER_API_KEY") else "https://api.openai.com/v1"
+        # Use Kaesra Tech API
+        api_key = os.getenv("KAESRA_API_KEY")
+        base_url = os.getenv("KAESRA_BASE_URL", "https://api-kaesra-tech.vercel.app/v1")
         
         self.client = AsyncOpenAI(
             api_key=api_key,
@@ -52,21 +42,15 @@ class TaskRouter:
             prompt = get_router_prompt(task_description, self.specialists)
             
             try:
-                # Use correct parameters based on API provider
+                # Use correct parameters for Kaesra Tech API
                 completion_params = {
                     "model": self.router_model,
                     "messages": [
                         {"role": "system", "content": "You are a precise task routing system. Always respond with valid JSON."},
                         {"role": "user", "content": prompt}
                     ],
+                    "max_completion_tokens": 10000
                 }
-                
-                # Only set temperature and max_tokens for OpenRouter
-                if os.getenv("OPENROUTER_API_KEY"):
-                    completion_params["temperature"] = 0.1
-                    completion_params["max_tokens"] = 10000
-                else:
-                    completion_params["max_completion_tokens"] = 10000
                     
                 response = await self.client.chat.completions.create(**completion_params)
             except Exception as api_error:

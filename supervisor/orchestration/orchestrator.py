@@ -27,7 +27,7 @@ from ..triage.triage_manager import TriageManager
 class SupervisorOrchestrator:
     """Main orchestrator for the codex supervisor."""
     
-    def __init__(self, config: Dict[str, Any], session_dir: Path, supervisor_model: str = "o3",
+    def __init__(self, config: Dict[str, Any], session_dir: Path, supervisor_model: str = None,
                  duration_minutes: int = 60, verbose: bool = False, codex_binary: str = "./target/release/codex",
                  benchmark_mode: bool = False, skip_todos: bool = False, use_prompt_generation: bool = False,
                  working_hours_config: Optional[WorkingHoursConfig] = None,
@@ -35,7 +35,8 @@ class SupervisorOrchestrator:
 
         self.config = config
         self.session_dir = session_dir
-        self.supervisor_model = supervisor_model
+        # Use env var or default
+        self.supervisor_model = supervisor_model or os.getenv("KAESRA_SUPERVISOR_MODEL", "openai-gpt-5.2")
         self.duration_minutes = duration_minutes
         self.verbose = verbose
         self.codex_binary = codex_binary
@@ -68,7 +69,7 @@ class SupervisorOrchestrator:
                 session_dir=session_dir,
                 task_config=config,
                 supervisor_model=supervisor_model,
-                api_key=os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY"),
+                api_key=os.getenv("KAESRA_API_KEY"),
                 codex_binary=codex_binary
             )
         
@@ -88,9 +89,9 @@ class SupervisorOrchestrator:
         
         self.continuation_count = 0
         
-        # Try OPENROUTER_API_KEY first, fallback to OPENAI_API_KEY
-        api_key = os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY")
-        base_url = "https://openrouter.ai/api/v1" if os.getenv("OPENROUTER_API_KEY") else "https://api.openai.com/v1"
+        # Use Kaesra Tech API endpoint
+        api_key = os.getenv("KAESRA_API_KEY")
+        base_url = os.getenv("KAESRA_BASE_URL", "https://api-kaesra-tech.vercel.app/v1")
         
         self.client = AsyncOpenAI(
             base_url=base_url,
@@ -280,18 +281,12 @@ class SupervisorOrchestrator:
         summary_prompt = get_summarization_prompt(formatted_content)
 
         try:
-            # Use correct parameters based on API provider
+            # Use correct parameters for Kaesra Tech API
             completion_params = {
                 "model": self.context_manager.summarization_model,
                 "messages": [{"role": "user", "content": summary_prompt}],
+                "max_completion_tokens": 10000
             }
-            
-            # Only set temperature and max_tokens for OpenRouter
-            if os.getenv("OPENROUTER_API_KEY"):
-                completion_params["temperature"] = 0.1
-                completion_params["max_tokens"] = 10000
-            else:
-                completion_params["max_completion_tokens"] = 10000
                 
             response = await self.context_manager.client.chat.completions.create(**completion_params)
             
@@ -320,15 +315,9 @@ class SupervisorOrchestrator:
         """Switch to a random different model."""
         import random
         
-        # Different model lists based on API provider
-        if os.getenv("OPENROUTER_API_KEY"):
-            # Use environment variable or default OpenRouter models
-            default_models = "anthropic/claude-sonnet-4,openai/o3,anthropic/claude-opus-4,google/gemini-2.5-pro,openai/o3-pro"
-            available_models = os.getenv("OPENROUTER_AVAILABLE_MODELS", default_models).split(",")
-        else:
-            # Use environment variable or default OpenAI direct models
-            default_models = "o3,gpt-5"
-            available_models = os.getenv("OPENAI_AVAILABLE_MODELS", default_models).split(",") 
+        # Use Kaesra Tech available models
+        default_models = "openai-gpt-5.2,anthropic-claude-sonnet-3.7,google-gemini-3-pro-preview"
+        available_models = os.getenv("KAESRA_AVAILABLE_MODELS", default_models).split(",")
         if self.supervisor_model in available_models:
             available_models.remove(self.supervisor_model)
         
@@ -366,19 +355,14 @@ class SupervisorOrchestrator:
     async def _get_supervisor_response(self, instance_responses: Dict[str, str] = None) -> Optional[str]:
         """Get a response from the supervisor model."""
         try:
-            # Use correct parameters based on API provider
+            # Use correct parameters for Kaesra Tech API
             completion_params = {
                 "model": self.supervisor_model,
                 "messages": self.conversation_history,
                 "tools": self.tools.get_tool_definitions(),
                 "tool_choice": "auto",
+                "max_completion_tokens": 10000
             }
-            
-            # Only set max_tokens for OpenRouter
-            if os.getenv("OPENROUTER_API_KEY"):
-                completion_params["max_tokens"] = 10000
-            else:
-                completion_params["max_completion_tokens"] = 10000
                 
             response = await self.client.chat.completions.create(**completion_params)
             
@@ -463,7 +447,7 @@ class SupervisorOrchestrator:
             },
             "supervisor_config": {
                 "model": self.supervisor_model,
-                "api_provider": "openrouter",
+                "api_provider": "kaesra-tech",
                 "verbose": self.verbose
             },
             "codex_config": {
@@ -693,19 +677,14 @@ class SupervisorOrchestrator:
                     self.conversation_history, preserve_recent=20
                 )
             
-            # Use correct parameters based on API provider
+            # Use correct parameters for Kaesra Tech API
             completion_params = {
                 "model": self.supervisor_model,
                 "messages": self.conversation_history,
                 "tools": self.tools.get_tool_definitions(),
                 "tool_choice": "auto",
+                "max_completion_tokens": 10000
             }
-            
-            # Only set max_tokens for OpenRouter
-            if os.getenv("OPENROUTER_API_KEY"):
-                completion_params["max_tokens"] = 10000
-            else:
-                completion_params["max_completion_tokens"] = 10000
                 
             response = await self.client.chat.completions.create(**completion_params)
             
@@ -778,8 +757,7 @@ class SupervisorOrchestrator:
             if content.strip() or tool_calls_data:
                 assistant_message = {
                     "role": "assistant",
-                    "content": content,
-                    "model": self.supervisor_model
+                    "content": content
                 }
                 if tool_calls_data:
                     assistant_message["tool_calls"] = tool_calls_data

@@ -20,25 +20,17 @@ class ContextManager:
         self.max_tokens = max_tokens
         self.buffer_tokens = buffer_tokens
         
-        # Use environment variable if set, otherwise choose default based on API provider
-        if os.getenv("SUMMARIZATION_MODEL"):
-            self.summarization_model = os.getenv("SUMMARIZATION_MODEL")
-        else:
-            # Default model based on which API is being used
-            if os.getenv("OPENROUTER_API_KEY"):
-                self.summarization_model = "openai/o4-mini"  # OpenRouter format
-            else:
-                self.summarization_model = "o4-mini"  # OpenAI direct format
+        # Use environment variable for summarization model
+        self.summarization_model = os.getenv("KAESRA_SUMMARIZATION_MODEL", "anthropic-claude-sonnet-3.7")
         
         try:
             self.tokenizer = tiktoken.get_encoding("o200k_base")
         except KeyError:
             self.tokenizer = tiktoken.get_encoding("cl100k_base")
         
-        
-        # Try OPENROUTER_API_KEY first, fallback to OPENAI_API_KEY
-        api_key = os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY")
-        base_url = "https://openrouter.ai/api/v1" if os.getenv("OPENROUTER_API_KEY") else "https://api.openai.com/v1"
+        # Use Kaesra Tech API
+        api_key = os.getenv("KAESRA_API_KEY")
+        base_url = os.getenv("KAESRA_BASE_URL", "https://api-kaesra-tech.vercel.app/v1")
         
         self.client = AsyncOpenAI(
             base_url=base_url,
@@ -199,18 +191,12 @@ class ContextManager:
         summary_prompt = get_summarization_prompt(context)
         
         try:
-            # Use correct parameters based on API provider
+            # Use correct parameters for Kaesra Tech API
             completion_params = {
                 "model": self.summarization_model,
                 "messages": [{"role": "user", "content": summary_prompt}],
+                "max_completion_tokens": 10000
             }
-            
-            # Only set temperature and max_tokens for OpenRouter
-            if os.getenv("OPENROUTER_API_KEY"):
-                completion_params["temperature"] = 0.1
-                completion_params["max_tokens"] = 10000
-            else:
-                completion_params["max_completion_tokens"] = 10000
                 
             response = await self.client.chat.completions.create(**completion_params)
             

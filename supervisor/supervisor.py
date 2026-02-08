@@ -98,29 +98,19 @@ async def main():
         logging.error(f"Failed to load config: {e}")
         sys.exit(1)
     
-    api_key = os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY")
+    api_key = os.getenv("KAESRA_API_KEY")
     if not api_key:
-        print("❌ Either OPENROUTER_API_KEY or OPENAI_API_KEY environment variable is required")
-        print("💡 Create a .env file with: OPENROUTER_API_KEY=your-key-here")
-        print("💡 Or use: OPENAI_API_KEY=your-key-here")
+        print("❌ KAESRA_API_KEY environment variable is required")
+        print("💡 Create a .env file with: KAESRA_API_KEY=your-key-here")
         sys.exit(1)
     
-    if os.getenv("OPENROUTER_API_KEY"):
-        print("✅ OpenRouter API key found")
-    else:
-        print("✅ OpenAI API key found")
+    print("✅ Kaesra Tech API key found")
     
-    # Choose supervisor model based on environment or API provider
+    # Choose supervisor model based on environment
     if args.supervisor_model:
         supervisor_model = args.supervisor_model
-    elif os.getenv("SUPERVISOR_MODEL"):
-        supervisor_model = os.getenv("SUPERVISOR_MODEL")
     else:
-        # Default based on API provider
-        if os.getenv("OPENROUTER_API_KEY"):
-            supervisor_model = "openai/o4-mini"  # OpenRouter format
-        else:
-            supervisor_model = "o4-mini"  # OpenAI direct format
+        supervisor_model = os.getenv("KAESRA_SUPERVISOR_MODEL", "openai-gpt-5.2")
     print(f"🤖 Using supervisor model: {supervisor_model}")
     
     if args.benchmark_mode:
@@ -145,8 +135,7 @@ async def main():
         try:
             config_content = yaml.dump(config, default_flow_style=False)
             
-            use_openrouter = bool(os.getenv("OPENROUTER_API_KEY"))
-            todo_generator = TodoGenerator(api_key, use_openrouter)
+            todo_generator = TodoGenerator(api_key)
             initial_todos = await todo_generator.generate_todos_from_config(config_content)
             
             await todo_generator.save_todos_to_file(initial_todos, todo_file)

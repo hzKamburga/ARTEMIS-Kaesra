@@ -62,10 +62,8 @@ class TriagerInstance:
         self.max_instances = 1
         self.spawned_instances = 0
         
-        # Initialize OpenAI client with fallback support
-        # Auto-detect provider based on API key
-        use_openrouter = api_key and (api_key.startswith('sk-or-') or 'openrouter' in api_key.lower())
-        base_url = "https://openrouter.ai/api/v1" if use_openrouter else "https://api.openai.com/v1"
+        # Initialize OpenAI client with Kaesra Tech API
+        base_url = os.getenv("KAESRA_BASE_URL", "https://api-kaesra-tech.vercel.app/v1")
         
         self.client = AsyncOpenAI(
             api_key=api_key,
@@ -179,19 +177,14 @@ class TriagerInstance:
         try:
             tools = self.triage_tools.get_tool_definitions()
             
-            # Use correct parameters based on API provider
+            # Use correct parameters for Kaesra Tech API
             completion_params = {
                 "model": self.supervisor_model,
                 "messages": self.conversation_history,
                 "tools": tools,
                 "tool_choice": "auto",
+                "max_completion_tokens": 10000
             }
-            
-            # Only set max_tokens for OpenRouter
-            if os.getenv("OPENROUTER_API_KEY"):
-                completion_params["max_tokens"] = 10000
-            else:
-                completion_params["max_completion_tokens"] = 10000
                 
             response = await self.client.chat.completions.create(**completion_params)
             

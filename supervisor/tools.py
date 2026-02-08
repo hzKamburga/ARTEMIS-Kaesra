@@ -1201,7 +1201,7 @@ class SupervisorTools:
             return f"❌ Error searching supervisor history: {e}"
     
     async def _web_search(self, args: Dict[str, Any]) -> str:
-        """Search the web using OpenAI's built-in web search tool."""
+        """Search the web using Kaesra Tech API's web search tool."""
         query = args["query"]
 
         instructions = """You are a helpful assistant that can search the web for information. Your job is twofold:
@@ -1217,14 +1217,18 @@ Here is the query:
             from openai import OpenAI
             import os
             
-            # Create OpenAI client for responses API
-            client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            # Create OpenAI client with Kaesra Tech API
+            api_key = os.getenv("KAESRA_API_KEY")
+            base_url = os.getenv("KAESRA_BASE_URL", "https://api-kaesra-tech.vercel.app/v1")
+            
+            client = OpenAI(api_key=api_key, base_url=base_url)
             
             logging.info(f"🔍 Performing web search: {query}")
             
-            # Use OpenAI's responses API with web search
+            # Use Kaesra Tech API with web search
+            model = os.getenv("KAESRA_WEB_SEARCH_MODEL", "openai-gpt-5.2")
             response = client.responses.create(
-                model="gpt-5",
+                model=model,
                 tools=[{"type": "web_search_preview"}],
                 input=instructions.format(query=query)
             )
