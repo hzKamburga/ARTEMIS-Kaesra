@@ -1219,7 +1219,7 @@ Here is the query:
             
             # Create OpenAI client with Kaesra Tech API
             api_key = os.getenv("KAESRA_API_KEY")
-            base_url = os.getenv("KAESRA_BASE_URL", "https://api-kaesra-tech.vercel.app/v1")
+            base_url = os.getenv("KAESRA_BASE_URL", "https://kaesra-tech.vercel.app/v1")
             
             client = OpenAI(api_key=api_key, base_url=base_url)
             

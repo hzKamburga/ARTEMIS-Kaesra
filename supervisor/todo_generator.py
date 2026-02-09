@@ -18,7 +18,7 @@ class TodoGenerator:
         """Initialize TODO generator with API key."""
         # Use Kaesra Tech API
         api_key = api_key or os.getenv("KAESRA_API_KEY")
-        base_url = os.getenv("KAESRA_BASE_URL", "https://api-kaesra-tech.vercel.app/v1")
+        base_url = os.getenv("KAESRA_BASE_URL", "https://kaesra-tech.vercel.app/v1")
         
         self.client = AsyncOpenAI(
             api_key=api_key,
